@@ -6,6 +6,7 @@ import numpy as np
 import ray
 import torch
 from torch.utils.tensorboard import SummaryWriter
+import wandb
 
 from core.test import test
 from core.train import train
@@ -50,6 +51,8 @@ if __name__ == '__main__':
                         choices=['none', 'rrc', 'affine', 'crop', 'blur', 'shift', 'intensity'],
                         help='Style of augmentation')
     parser.add_argument('--info', type=str, default='none', help='debug string')
+    parser.add_argument('--wandb_project_name', type=str, default='EfficientZero', help='WandB project name')
+    parser.add_argument('--wandb_project_entity', type=str, default='distilling-object-detectors', help='WandB project entity')
     parser.add_argument('--load_model', action='store_true', default=False, help='choose to load model')
     parser.add_argument('--model_path', type=str, default='./results/test_model.p', help='load model path')
     parser.add_argument('--object_store_memory', type=int, default=150 * 1024 * 1024 * 1024, help='object store memory')
@@ -87,6 +90,7 @@ if __name__ == '__main__':
     device = game_config.device
     try:
         if args.opr == 'train':
+            wandb.init(project=args.wandb_project_name, entity=args.wandb_project_entity, sync_tensorboard=True)
             summary_writer = SummaryWriter(exp_path, flush_secs=10)
             if args.load_model and os.path.exists(args.model_path):
                 model_path = args.model_path
@@ -112,6 +116,7 @@ if __name__ == '__main__':
             logging.getLogger('train_test').info(test_msg)
             if args.save_video:
                 logging.getLogger('train_test').info('Saving video in path: {}'.format(test_path))
+            wandb.finish()
         elif args.opr == 'test':
             assert args.load_model
             if args.model_path is None:
