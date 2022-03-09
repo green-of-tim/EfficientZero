@@ -388,8 +388,8 @@ namespace tree{
 //         pb_c = log((total_children_visit_counts + pb_c_base + 1) / pb_c_base) + pb_c_init;
 //         pb_c *= (sqrt(total_children_visit_counts) / (child->visit_count + 1));
         L = log(total_children_visit_counts + pb_c_3 + 1);
-        pb_1 = pb_c_1 * sqrt(L) / sqrt(1 + child->visit_count)
-        pb_2 = pb_c_2 * L / (1 + child->visit_count)
+        pb_1 = pb_c_1 * sqrt(L) / sqrt(1 + child->visit_count);
+        pb_2 = pb_c_2 * L / (1 + child->visit_count);
 
 //         prior_score = pb_c * child->prior;
         if (child->visit_count == 0){
@@ -432,8 +432,8 @@ namespace tree{
 
             while(node->expanded()){
                 float mean_q = node->get_mean_q(is_root, parent_q, discount);
-                float w_value = node->update_w(is_root, parent_q, discount)
-                node->w_value = w_value
+                float w_value = node->update_w(is_root, parent_q, discount);
+                node->w_value = w_value;
                 is_root = 0;
                 parent_q = mean_q;
 
