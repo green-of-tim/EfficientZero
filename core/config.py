@@ -225,8 +225,9 @@ class BaseConfig(object):
         self.root_exploration_fraction = 0.25
 
         # UCB formula
-        self.pb_c_base = 19652
-        self.pb_c_init = 1.25
+        self.pb_c_1 = 19652
+        self.pb_c_2 = 19652
+        self.pb_c_3 = 1.25
 
         # Training
         self.training_steps = training_steps
