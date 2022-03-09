@@ -384,7 +384,7 @@ namespace tree{
     }
 
     float cucb_score(CNode *child, tools::CMinMaxStats &min_max_stats, float parent_mean_q, float parent_mean_w, int is_reset, float total_children_visit_counts, float parent_value_prefix, float pb_c_1, float pb_c_2, float pb_c_3, float discount){
-        float pb_c = 0.0, prior_score = 0.0, value_score = 0.0;
+        float pb_1 = 0.0, pb_2 = 0.0, value_score = 0.0, sigma2 = 0.0, w_score = 0.0, L = 0.0;
 //         pb_c = log((total_children_visit_counts + pb_c_base + 1) / pb_c_base) + pb_c_init;
 //         pb_c *= (sqrt(total_children_visit_counts) / (child->visit_count + 1));
         L = log(total_children_visit_counts + pb_c_3 + 1);
@@ -395,8 +395,7 @@ namespace tree{
         if (child->visit_count == 0){
             value_score = parent_mean_q;
             w_score = parent_mean_w;
-        }
-        else {
+        } else {
             float true_reward = child->value_prefix - parent_value_prefix;
             if(is_reset == 1){
                 true_reward = child->value_prefix;
@@ -424,7 +423,6 @@ namespace tree{
 
         int last_action = -1;
         float parent_q = 0.0;
-        float 
         results.search_lens = std::vector<int>();
         for(int i = 0; i < results.num; ++i){
             CNode *node = &(roots->roots[i]);
@@ -434,7 +432,7 @@ namespace tree{
 
             while(node->expanded()){
                 float mean_q = node->get_mean_q(is_root, parent_q, discount);
-                w_value = node->update_w(is_root, parent_q, disccount)
+                float w_value = node->update_w(is_root, parent_q, discount)
                 node->w_value = w_value
                 is_root = 0;
                 parent_q = mean_q;
