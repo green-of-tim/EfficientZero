@@ -18,7 +18,7 @@ namespace tree {
     class CNode {
         public:
             int visit_count, to_play, action_num, hidden_state_index_x, hidden_state_index_y, best_action, is_reset;
-            float value_prefix, prior, value_sum;
+            float value_prefix, prior, value_sum, w_value;
             std::vector<int> children_index;
             std::vector<CNode>* ptr_node_pool;
 
