@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include "cnode.h"
 
 namespace tree{
@@ -29,6 +30,8 @@ namespace tree{
         this->to_play = 0;
         this->value_prefix = 0.0;
         this->ptr_node_pool = nullptr;
+        
+        this->w_value = 0.0;
     }
 
     CNode::CNode(float prior, int action_num, std::vector<CNode>* ptr_node_pool){
@@ -44,6 +47,8 @@ namespace tree{
         this->ptr_node_pool = ptr_node_pool;
         this->hidden_state_index_x = -1;
         this->hidden_state_index_y = -1;
+        
+        this->w_value = 0.0;
     }
 
     CNode::~CNode(){}
@@ -118,6 +123,33 @@ namespace tree{
             mean_q = (parent_q + total_unsigned_q) / (total_visits + 1);
         }
         return mean_q;
+    }
+    
+    float CNode::update_w(int isRoot, float parent_q, float discount){
+        float total_unsigned_q = 0.0;
+        int total_visits = 0;
+        float parent_value_prefix = this->value_prefix;
+        for(int a = 0; a < this->action_num; ++a){
+            CNode* child = this->get_child(a);
+            if(child->visit_count > 0){
+                float true_reward = child->value_prefix - parent_value_prefix;
+                if(this->is_reset == 1){
+                    true_reward = child->value_prefix;
+                }
+                float qsa = true_reward + discount * child->value();
+                total_unsigned_q += qsa;
+                total_visits += 1;
+            }
+        }
+
+        float w_value = 0.0;
+        if(isRoot && total_visits > 0){
+            w_value = (pow(total_unsigned_q, 2)) / (total_visits);
+        }
+        else{
+            w_value = (this->w_value * this->visit_count + pow(total_unsigned_q, 2)) / (total_visits + 1);
+        }
+        return w_value;
     }
 
     void CNode::print_out(){
@@ -324,13 +356,13 @@ namespace tree{
         }
     }
 
-    int cselect_child(CNode* root, tools::CMinMaxStats &min_max_stats, int pb_c_base, float pb_c_init, float discount, float mean_q){
+    int cselect_child(CNode* root, tools::CMinMaxStats &min_max_stats, float pb_c_1, float pb_c_2, float pb_c_3, float discount, float mean_q, float mean_w){
         float max_score = FLOAT_MIN;
         const float epsilon = 0.000001;
         std::vector<int> max_index_lst;
         for(int a = 0; a < root->action_num; ++a){
             CNode* child = root->get_child(a);
-            float temp_score = cucb_score(child, min_max_stats, mean_q, root->is_reset, root->visit_count - 1, root->value_prefix, pb_c_base, pb_c_init, discount);
+            float temp_score = cucb_score(child, min_max_stats, mean_q, mean_w, root->is_reset, root->visit_count - 1, root->value_prefix, pb_c_1, pb_c_2, pb_c_3, discount);
 
             if(max_score < temp_score){
                 max_score = temp_score;
@@ -351,14 +383,18 @@ namespace tree{
         return action;
     }
 
-    float cucb_score(CNode *child, tools::CMinMaxStats &min_max_stats, float parent_mean_q, int is_reset, float total_children_visit_counts, float parent_value_prefix, float pb_c_base, float pb_c_init, float discount){
+    float cucb_score(CNode *child, tools::CMinMaxStats &min_max_stats, float parent_mean_q, float parent_mean_w, int is_reset, float total_children_visit_counts, float parent_value_prefix, float pb_c_1, float pb_c_2, float pb_c_3, float discount){
         float pb_c = 0.0, prior_score = 0.0, value_score = 0.0;
-        pb_c = log((total_children_visit_counts + pb_c_base + 1) / pb_c_base) + pb_c_init;
-        pb_c *= (sqrt(total_children_visit_counts) / (child->visit_count + 1));
+//         pb_c = log((total_children_visit_counts + pb_c_base + 1) / pb_c_base) + pb_c_init;
+//         pb_c *= (sqrt(total_children_visit_counts) / (child->visit_count + 1));
+        L = log(total_children_visit_counts + pb_c_3 + 1);
+        pb_1 = pb_c_1 * sqrt(L) / sqrt(1 + child->visit_count)
+        pb_2 = pb_c_2 * L / (1 + child->visit_count)
 
-        prior_score = pb_c * child->prior;
+//         prior_score = pb_c * child->prior;
         if (child->visit_count == 0){
             value_score = parent_mean_q;
+            w_score = parent_mean_w;
         }
         else {
             float true_reward = child->value_prefix - parent_value_prefix;
@@ -366,18 +402,21 @@ namespace tree{
                 true_reward = child->value_prefix;
             }
             value_score = true_reward + discount * child->value();
+            w_score = child->w_value;
         }
+        
+        sigma2 = w_score - pow(value_score, 2);
 
         value_score = min_max_stats.normalize(value_score);
 
         if (value_score < 0) value_score = 0;
         if (value_score > 1) value_score = 1;
 
-        float ucb_value = prior_score + value_score;
+        float ucb_value = value_score + sigma2 * pb_1 + pb_2;
         return ucb_value;
     }
 
-    void cbatch_traverse(CRoots *roots, int pb_c_base, float pb_c_init, float discount, tools::CMinMaxStatsList *min_max_stats_lst, CSearchResults &results){
+    void cbatch_traverse(CRoots *roots, float pb_c_1, float pb_c_2, float pb_c_3, float discount, tools::CMinMaxStatsList *min_max_stats_lst, CSearchResults &results){
         // set seed
         timeval t1;
         gettimeofday(&t1, NULL);
@@ -385,6 +424,7 @@ namespace tree{
 
         int last_action = -1;
         float parent_q = 0.0;
+        float 
         results.search_lens = std::vector<int>();
         for(int i = 0; i < results.num; ++i){
             CNode *node = &(roots->roots[i]);
@@ -394,10 +434,12 @@ namespace tree{
 
             while(node->expanded()){
                 float mean_q = node->get_mean_q(is_root, parent_q, discount);
+                w_value = node->update_w(is_root, parent_q, disccount)
+                node->w_value = w_value
                 is_root = 0;
                 parent_q = mean_q;
 
-                int action = cselect_child(node, min_max_stats_lst->stats_lst[i], pb_c_base, pb_c_init, discount, mean_q);
+                int action = cselect_child(node, min_max_stats_lst->stats_lst[i], pb_c_1, pb_c_2, pb_c_3, discount, mean_q, w_value);
                 node->best_action = action;
                 // next
                 node = node->get_child(action);
