@@ -228,6 +228,7 @@ class BaseConfig(object):
         self.pb_c_1 = 19652
         self.pb_c_2 = 19652
         self.pb_c_3 = 1.25
+        self.mode = 'bern' ## other variants are 'prior' or 'base'
 
         # Training
         self.training_steps = training_steps
