@@ -1,6 +1,5 @@
 #include <iostream>
 #include <cmath>
-#include <string>
 #include "cnode.h"
 
 namespace tree{
