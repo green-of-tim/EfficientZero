@@ -357,19 +357,19 @@ namespace tree{
         }
     }
 
-    int cselect_child(CNode* root, tools::CMinMaxStats &min_max_stats, float pb_c_1, float pb_c_2, float pb_c_3, float discount, float mean_q, float mean_w, float max_q, std::string mode){
+    int cselect_child(CNode* root, tools::CMinMaxStats &min_max_stats, float pb_c_1, float pb_c_2, float pb_c_3, float discount, float mean_q, float mean_w, float max_q, int mode){
         float max_score = FLOAT_MIN;
         const float epsilon = 0.000001;
         std::vector<int> max_index_lst;
         for(int a = 0; a < root->action_num; ++a){
             CNode* child = root->get_child(a);
             float temp_score = 0.;
-            if (mode=='base'){
-                cucb_score(child, min_max_stats, mean_q, mean_w, root->is_reset, root->visit_count - 1, root->value_prefix, pb_c_1, pb_c_2, pb_c_3, discount);
-            } else if (mode=='prior'){
-                cucb_score_prior(child, min_max_stats, mean_q, mean_w, root->is_reset, root->visit_count - 1, root->value_prefix, pb_c_1, pb_c_2, pb_c_3, discount);
-            } else if (mode=='bern'){
-                cucb_score_bern(child, min_max_stats, mean_q, mean_w, root->is_reset, root->visit_count - 1, root->value_prefix, pb_c_1, pb_c_2, pb_c_3, discount, max_q);
+            if (mode==0){
+                temp_score = cucb_score(child, min_max_stats, mean_q, mean_w, root->is_reset, root->visit_count - 1, root->value_prefix, pb_c_1, pb_c_2, pb_c_3, discount);
+            } else if (mode==1){
+                temp_score = cucb_score_prior(child, min_max_stats, mean_q, mean_w, root->is_reset, root->visit_count - 1, root->value_prefix, pb_c_1, pb_c_2, pb_c_3, discount);
+            } else if (mode==2){
+                temp_score = cucb_score_bern(child, min_max_stats, mean_q, mean_w, root->is_reset, root->visit_count - 1, root->value_prefix, pb_c_1, pb_c_2, pb_c_3, discount, max_q);
             }
             if(max_score < temp_score){
                 max_score = temp_score;
@@ -486,7 +486,7 @@ namespace tree{
         return ucb_value;
     }
 
-    void cbatch_traverse(CRoots *roots, float pb_c_1, float pb_c_2, float pb_c_3, float discount, tools::CMinMaxStatsList *min_max_stats_lst, CSearchResults &results, std::string mode){
+    void cbatch_traverse(CRoots *roots, float pb_c_1, float pb_c_2, float pb_c_3, float discount, tools::CMinMaxStatsList *min_max_stats_lst, CSearchResults &results, int mode){
         // set seed
         timeval t1;
         gettimeofday(&t1, NULL);
